@@ -27,7 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @RequiredArgsConstructor
 public class JwtUtil {
-
 	public static final String AUTHORIZATION_HEADER = "Authorization";
 	public static final String AUTHORIZATION_KEY = "auth";
 	private static final String BEARER_PREFIX = "Bearer ";
@@ -37,8 +36,8 @@ public class JwtUtil {
 
 	@Value("${jwt.secret.key}")
 	private String secretKey;
-	private Key key;
-	private final SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
+	private static Key key;
+	private static final SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
 
 	@PostConstruct
 	public void init() {
@@ -47,7 +46,7 @@ public class JwtUtil {
 	}
 
 	// header 토큰을 가져오기
-	public String resolveToken(HttpServletRequest request) {
+	public static String resolveToken(HttpServletRequest request) {
 		String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
 		if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
 			return bearerToken.substring(7);
@@ -56,7 +55,7 @@ public class JwtUtil {
 	}
 
 	// 토큰 생성
-	public String createToken(String username, UserRoleEnum role) {
+	public static String createToken(String username, UserRoleEnum role) {
 		Date date = new Date();
 
 		return BEARER_PREFIX +
@@ -70,7 +69,7 @@ public class JwtUtil {
 	}
 
 	// 토큰 검증
-	public boolean validateToken(String token) {
+	public static boolean validateToken(String token) {
 		try {
 			Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
 			return true;
@@ -86,7 +85,7 @@ public class JwtUtil {
 		return false;
 	}
 
-	public Claims getUserInfoFromToken(String token) {
+	public static Claims getUserInfoFromToken(String token) {
 		return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
 	}
 }

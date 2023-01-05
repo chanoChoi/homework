@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.project.dto.PostRequestDto;
 import com.example.project.dto.PostResponseDto;
@@ -27,31 +28,16 @@ public class PostService {
 
 	private final PostRepository postRepository;
 	private final UserRepository userRepository;
-	private final JwtUtil jwtUtil;
 
 	//게시물 생성
 	@Transactional
-	public Post createPost(PostRequestDto requestDto, HttpServletRequest request) {
-		String token = jwtUtil.resolveToken(request);
-		Claims claims;
-
-		if (token == null) {
-			throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
-		} else {
-			if (jwtUtil.validateToken(token)) {
-				claims = jwtUtil.getUserInfoFromToken(token);
-			} else {
-				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
-			}
-		}
-
-		User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
+	public Post createPost(PostRequestDto requestDto, String username) {
+		User user = userRepository.findByUsername(username).orElseThrow(
 			() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
 		);
 
 		Post post = requestDto.convertTo(user);
-		postRepository.save(post);
-		return post;
+		return postRepository.save(post);
 	}
 
 	//게시물 전체 조회
@@ -69,90 +55,58 @@ public class PostService {
 	}
 
 	@Transactional
-	public PostResponseDto updatePost(Long id, PostRequestDto requestDto, HttpServletRequest request) {
+	public PostResponseDto updatePost(Long id, PostRequestDto requestDto, String username) {
 		Post post = postRepository.findById(id).orElseThrow(
 			() -> new RuntimeException("수정하려는 게시글이 없습니다.")
 		);
 
-		String token = jwtUtil.resolveToken(request);
-		Claims claims;
+		User user = userRepository.findByUsername(username)
+			.orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
 
-		if (token != null){
-			if (jwtUtil.validateToken(token)){
-				claims = jwtUtil.getUserInfoFromToken(token);
-			} else {
-				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
-			}
-			User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
-				() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
-			);
-
-			if (post.checkAuthorization(user)) {
-				post.update(requestDto);
-			} else {
-				throw new IllegalArgumentException("권한이 없음");
-			}
+		if (post.checkAuthorization(user)) {
+			post.update(requestDto);
+			return new PostResponseDto(post);
 		}
-		return new PostResponseDto(post);
+
+		throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "작성자만 삭제/수정할 수 있습니다.");
 	}
 
 	@Transactional
-	public void deletePost(Long id, HttpServletRequest request){
+	public void deletePost(Long id, String username) {
 		Post post = postRepository.findById(id).orElseThrow(
 			() -> new RuntimeException("삭제하려는 게시글이 없습니다.")
 		);
+		User user = userRepository.findByUsername(username).orElseThrow(
+			() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
+		);
 
-		String token = jwtUtil.resolveToken(request);
-		Claims claims;
-
-		if (token != null){
-			if (jwtUtil.validateToken(token)){
-				claims = jwtUtil.getUserInfoFromToken(token);
-			} else {
-				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
-			}
-			User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
-				() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
-			);
-
-			if (post.checkAuthorization(user)) {
-				postRepository.deleteById(id);
-			} else {
-				throw new IllegalArgumentException("권한이 없음");
-			}
+		if (post.checkAuthorization(user)) {
+			post.getLikes().clear();
+			postRepository.deleteById(id);
+			return;
 		}
+
+		throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "작성자만 삭제/수정할 수 있습니다.");
 	}
 
 	@Transactional
-	public ResponseEntity addLike(Long postId, HttpServletRequest request) {
-		User user = new User();
+	public String addLike(Long postId, String username) {
 		Post post = postRepository.findById(postId).orElseThrow(
 			() -> new RuntimeException(" 해당 게시글이 없습니다.")
 		);
 
-		String token = jwtUtil.resolveToken(request);
-		Claims claims;
+		User user = userRepository.findByUsername(username).orElseThrow(
+			() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
+		);
 
-		if (token != null) {
-			if (jwtUtil.validateToken(token)) {
-				claims = jwtUtil.getUserInfoFromToken(token);
-			} else {
-				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
-			}
-			user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
-				() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
-			);
-		}
 		if (!post.getLikes().contains(user)) {
 			post.getLikes().add(user);
-			post.getLikes().size();
 			this.postRepository.save(post);
-			return new ResponseEntity<>("좋아요 성공!", HttpStatus.OK);
+			return "좋아요 성공!";
 		} else {
 			post.getLikes().remove(user);
-			post.getLikes().size();
 			this.postRepository.save(post);
-			return new ResponseEntity<>("좋아요 취소!", HttpStatus.OK);
+			return "좋아요 취소!";
 		}
 	}
 }

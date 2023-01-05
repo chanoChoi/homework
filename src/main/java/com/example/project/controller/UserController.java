@@ -6,6 +6,7 @@ import javax.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,14 +26,14 @@ public class UserController {
 	private final UserService userService;
 
 	@PostMapping("/signup")
-	public ResponseEntity<String> signup(@Valid SignupRequestDto signupRequestDto) {
+	public ResponseEntity<String> signup(@Validated @RequestBody SignupRequestDto signupRequestDto) {
 		userService.signup(signupRequestDto);
 		return new ResponseEntity<>("회원가입이 완료되었습니다.", HttpStatus.CREATED);
 	}
 
 	@ResponseBody
 	@PostMapping("/login")
-	public ResponseEntity<String> login(@RequestBody LoginRequestDto loginRequestDto, HttpServletResponse response) {
+	public ResponseEntity<String> login(@Validated @RequestBody LoginRequestDto loginRequestDto, HttpServletResponse response) {
 		userService.login(loginRequestDto, response);
 		return new ResponseEntity<>("로그인이 성공하였습니다.", HttpStatus.OK);
 	}

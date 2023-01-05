@@ -12,9 +12,12 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
+
+import org.springframework.data.jpa.repository.Query;
 
 import com.example.project.dto.PostRequestDto;
 
@@ -41,9 +44,13 @@ public class Post extends Timestamped {
 	private User user;
 
 	@OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE, fetch = FetchType.EAGER)
-	private List<Comment> comments;
+	private List<Comment> comments = new ArrayList<>();
 
-	@ManyToMany
+	@ManyToMany(cascade = CascadeType.REMOVE)
+	@JoinTable(name = "liked_user_the_post",
+		joinColumns = @JoinColumn(name = "post_id", referencedColumnName = "id"),
+		inverseJoinColumns = @JoinColumn(name = "liked_user_id", referencedColumnName = "id")
+	)
 	private List<User> likes = new ArrayList<>();
 
 	public Post(User user, String title, String content) {

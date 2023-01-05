@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.project.dto.CommentRequestDto;
 import com.example.project.dto.CommentResponseDto;
@@ -29,126 +30,77 @@ public class CommentService {
 	private final PostRepository postRepository;
 	private final UserRepository userRepository;
 
-	private final JwtUtil jwtUtil;
-
 	@Transactional
-	public CommentResponseDto createComment(Long id, CommentRequestDto requestDto, HttpServletRequest request) {
-
-		String token = jwtUtil.resolveToken(request);
-		Claims claims;
-
-		Post post = postRepository.findById(id).orElseThrow(
-			()-> new IllegalArgumentException("게시글을 찾을 수 없습니다.")
+	public CommentResponseDto createComment(Long PostId, CommentRequestDto requestDto,
+		String username) {
+		Post post = postRepository.findById(PostId).orElseThrow(
+			() -> new IllegalArgumentException("게시글을 찾을 수 없습니다.")
 		); //해당 게시글 찾는 과정
 
-		if (token == null) {
-			throw new IllegalArgumentException("권한 없음");
-		}
+		User user = userRepository.findByUsername(username)
+			.orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
 
-		if (jwtUtil.validateToken(token)) {
-			claims = jwtUtil.getUserInfoFromToken(token);
-		} else {
-			throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
-		}
-		User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
-			() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
 		Comment comment = new Comment(requestDto, user, post);
 		commentRepository.save(comment);
 		return new CommentResponseDto(comment);
 	}
 
 	@Transactional
-	public CommentResponseDto updateComment( CommentRequestDto requestDto, HttpServletRequest request, Long commentId) {
-		//        Board board = boardRepository.findById(id).orElseThrow(
-		//                ()-> new IllegalArgumentException("게시글을 찾을 수 없습니다.")
-		//        );
+	public CommentResponseDto updateComment(CommentRequestDto requestDto,
+		String username, Long commentId) {
 		Comment comment = commentRepository.findById(commentId).orElseThrow(
 			() -> new IllegalArgumentException("수정할 댓글이 없습니다.")
 		);
 
-		String token = jwtUtil.resolveToken(request);
-		Claims claims;
+		User user = userRepository.findByUsername(username).orElseThrow(
+			() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
 
+		);
 
-		if (token != null) {
-			if (jwtUtil.validateToken(token)) {
-				claims = jwtUtil.getUserInfoFromToken(token);
-			} else {
-				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
-			}
-			User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
-				() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
-
-			);
-			if (comment.getUser().getId().equals(user.getId())|| user.getUserRoleEnum().equals(UserRoleEnum.ADMIN)) {
-				comment.update(requestDto);
-			}else{
-				throw new IllegalArgumentException("댓글을 수정할 권한이 없습니다.");
-			}
+		if (comment.validateAuth(user) || user.getUserRoleEnum().equals(UserRoleEnum.ADMIN)) {
+			comment.update(requestDto);
+			return new CommentResponseDto(comment);
 		}
-		return new CommentResponseDto(comment);
+
+		throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "작성자만 삭제/수정할 수 있습니다.");
+
 	}
 
 	@Transactional
-	public void deleteComment( HttpServletRequest request, Long commentId){
-		//        Board board = boardRepository.findById(id).orElseThrow(
-		//                ()-> new IllegalArgumentException("게시글을 찾을 수 없습니다.")
-		//        );
-
+	public void deleteComment(String username, Long commentId) {
 		Comment comment = commentRepository.findById(commentId).orElseThrow(
 			() -> new IllegalArgumentException("삭제할 댓글이 없습니다.")
 		);
 
-		String token = jwtUtil.resolveToken(request);
-		Claims claims;
+		User user = userRepository.findByUsername(username).orElseThrow(
+			() -> new IllegalArgumentException("삭제할 댓글이 존재하지 않습니다."));
 
-		if (token != null){
-			if(jwtUtil.validateToken(token)){
-				claims = jwtUtil.getUserInfoFromToken(token);
-			}else{
-				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
-			}
-			User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
-				()-> new IllegalArgumentException("삭제할 댓글이 존재하지 않습니다.")
-			);
-			if (comment.getUser().getId().equals(user.getId())|| user.getUserRoleEnum().equals(UserRoleEnum.ADMIN)) {
-				commentRepository.deleteById(commentId);
-			}else{
-				throw new IllegalArgumentException("댓글을 삭제할 권한이 없습니다.");
-			}
+		if (user.getUserRoleEnum().equals(UserRoleEnum.ADMIN) || comment.validateAuth(user)) {
+			commentRepository.deleteById(commentId);
+			return;
 		}
+
+		throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "작성자만 삭제/수정할 수 있습니다.");
 	}
 
 	@Transactional
-	public ResponseEntity addLike(Long commentId, HttpServletRequest request) {
-		User user = new User();
+	public String addLike(Long commentId, String username) {
 		Comment comment = commentRepository.findById(commentId).orElseThrow(
 			() -> new RuntimeException("해당 게시글이 없습니다.")
 		);
 
-		String token = jwtUtil.resolveToken(request);
-		Claims claims;
+		User user = userRepository.findByUsername(username).orElseThrow(
+			() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
+		);
 
-		if (token != null) {
-			if (jwtUtil.validateToken(token)) {
-				claims = jwtUtil.getUserInfoFromToken(token);
-			} else {
-				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
-			}
-			user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
-				() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
-			);
-		}
 		if (!comment.getLikes().contains(user)) {
 			comment.getLikes().add(user);
-			comment.getLikes().size();
 			this.commentRepository.save(comment);
-			return new ResponseEntity<>("좋아요 성공!", HttpStatus.OK);
+			return "좋아요 성공!";
 		} else {
 			comment.getLikes().remove(user);
-			comment.getLikes().size();
 			this.commentRepository.save(comment);
-			return new ResponseEntity<>("좋아요 취소!", HttpStatus.OK);
+			return "좋아요 취소!";
 		}
 	}
 }

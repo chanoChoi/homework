@@ -2,6 +2,7 @@ package com.example.project.entity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -54,4 +55,7 @@ public class Comment extends Timestamped {
 		this.content = requestDto.getContent();
 	}
 
+	public boolean validateAuth(User user) {
+		return Objects.equals(this.user.getId(), user.getId());
+	}
 }
