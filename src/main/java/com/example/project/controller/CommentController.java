@@ -23,7 +23,7 @@ public class CommentController {
 
 	private final CommentService commentService;
 
-	@PostMapping("/boards/{id}/comments")
+	@PostMapping("/post/comments/{id}")
 	public ResponseEntity<CommentResponseDto> createComment(@PathVariable Long id, @RequestBody CommentRequestDto requestDto, HttpServletRequest request){
 		CommentResponseDto commentResponseDto = commentService.createComment(id, requestDto, request);
 		return ResponseEntity.status(HttpStatus.OK).body(commentResponseDto);
