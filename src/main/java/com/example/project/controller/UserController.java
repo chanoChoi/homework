@@ -24,14 +24,14 @@ public class UserController {
 
 	private final UserService userService;
 
-	@PostMapping("/api/signup")
+	@PostMapping("/signup")
 	public ResponseEntity<String> signup(@Valid SignupRequestDto signupRequestDto) {
 		userService.signup(signupRequestDto);
 		return new ResponseEntity<>("회원가입이 완료되었습니다.", HttpStatus.CREATED);
 	}
 
 	@ResponseBody
-	@PostMapping("/api/login")
+	@PostMapping("/login")
 	public ResponseEntity<String> login(@RequestBody LoginRequestDto loginRequestDto, HttpServletResponse response) {
 		userService.login(loginRequestDto, response);
 		return new ResponseEntity<>("로그인이 성공하였습니다.", HttpStatus.OK);

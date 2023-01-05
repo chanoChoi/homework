@@ -1,13 +1,25 @@
 package com.example.project.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 
 import com.example.project.dto.PostRequestDto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -19,20 +31,25 @@ public class Post extends Timestamped {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private long id;
-
 	@Column(nullable = false)
 	private String title;
-
-	@Column(nullable = false)
-	private String username;
-
 	@Column(nullable = false)
 	private String content;
 
-	public Post(PostRequestDto postRequestDto) {
-		this.title = postRequestDto.getTitle();
-		this.username = postRequestDto.getUsername();
-		this.content = postRequestDto.getContent();
+	@ManyToOne
+	@JoinColumn(name = "user_id", referencedColumnName = "id")
+	private User user;
+
+	@OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE, fetch = FetchType.EAGER)
+	private List<Comment> comments;
+
+	@ManyToMany
+	private List<User> likes = new ArrayList<>();
+
+	public Post(User user, String title, String content) {
+		this.title = title;
+		this.content = content;
+		this.user = user;
 	}
 
 	public void update(PostRequestDto postRequestDto){
@@ -40,4 +57,7 @@ public class Post extends Timestamped {
 		this.content = postRequestDto.getContent();
 	}
 
+	public boolean checkAuthorization(User user) {
+		return Objects.equals(this.user.getId(), user.getId());
+	}
 }

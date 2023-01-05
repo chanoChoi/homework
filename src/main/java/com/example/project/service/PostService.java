@@ -31,8 +31,25 @@ public class PostService {
 
 	//게시물 생성
 	@Transactional
-	public Post createPost(PostRequestDto requestDto) {
-		Post post = new Post(requestDto);
+	public Post createPost(PostRequestDto requestDto, HttpServletRequest request) {
+		String token = jwtUtil.resolveToken(request);
+		Claims claims;
+
+		if (token == null) {
+			throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
+		} else {
+			if (jwtUtil.validateToken(token)) {
+				claims = jwtUtil.getUserInfoFromToken(token);
+			} else {
+				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
+			}
+		}
+
+		User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
+			() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
+		);
+
+		Post post = requestDto.convertTo(user);
 		postRepository.save(post);
 		return post;
 	}
@@ -69,18 +86,19 @@ public class PostService {
 			User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
 				() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
 			);
-			if (user.getUserRoleEnum().equals(UserRoleEnum.ADMIN)) {
-				userRepository.deleteById(id);
+
+			if (post.checkAuthorization(user)) {
+				post.update(requestDto);
 			} else {
-				throw new IllegalArgumentException("게시글을 수정할 권한이 없습니다.");
+				throw new IllegalArgumentException("권한이 없음");
 			}
 		}
 		return new PostResponseDto(post);
 	}
 
 	@Transactional
-	public ResponseEntity deletePost(Long id, HttpServletRequest request){
-		 Post post = postRepository.findById(id).orElseThrow(
+	public void deletePost(Long id, HttpServletRequest request){
+		Post post = postRepository.findById(id).orElseThrow(
 			() -> new RuntimeException("삭제하려는 게시글이 없습니다.")
 		);
 
@@ -96,12 +114,45 @@ public class PostService {
 			User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
 				() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
 			);
-			if (user.getUserRoleEnum().equals(UserRoleEnum.ADMIN)) {
-				userRepository.deleteById(id);
+
+			if (post.checkAuthorization(user)) {
+				postRepository.deleteById(id);
 			} else {
-				throw new IllegalArgumentException("게시글을 삭제할 권한이 없습니다.");
+				throw new IllegalArgumentException("권한이 없음");
 			}
 		}
-		return new ResponseEntity<>("삭제 성공!", HttpStatus.OK);
+	}
+
+	@Transactional
+	public ResponseEntity addLike(Long postId, HttpServletRequest request) {
+		User user = new User();
+		Post post = postRepository.findById(postId).orElseThrow(
+			() -> new RuntimeException(" 해당 게시글이 없습니다.")
+		);
+
+		String token = jwtUtil.resolveToken(request);
+		Claims claims;
+
+		if (token != null) {
+			if (jwtUtil.validateToken(token)) {
+				claims = jwtUtil.getUserInfoFromToken(token);
+			} else {
+				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
+			}
+			user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
+				() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
+			);
+		}
+		if (!post.getLikes().contains(user)) {
+			post.getLikes().add(user);
+			post.getLikes().size();
+			this.postRepository.save(post);
+			return new ResponseEntity<>("좋아요 성공!", HttpStatus.OK);
+		} else {
+			post.getLikes().remove(user);
+			post.getLikes().size();
+			this.postRepository.save(post);
+			return new ResponseEntity<>("좋아요 취소!", HttpStatus.OK);
+		}
 	}
 }

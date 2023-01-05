@@ -30,8 +30,8 @@ public class PostController {
 
 	//게시물 생성
 	@PostMapping("/api/post")
-	public Post createPost(@RequestBody PostRequestDto requestDto){
-		return postService.createPost(requestDto);
+	public Post createPost(@RequestBody PostRequestDto requestDto, HttpServletRequest request){
+		return postService.createPost(requestDto, request);
 	}
 
 	//게시물 전체 조회
@@ -55,7 +55,13 @@ public class PostController {
 
 	//게시물 삭제
 	@DeleteMapping("/api/post/{id}")
-	public ResponseEntity deletePost(@PathVariable Long id, HttpServletRequest request){
-		return postService.deletePost(id,request);
+	public ResponseEntity<String> deletePost(@PathVariable Long id, HttpServletRequest request){
+		postService.deletePost(id,request);
+		return new ResponseEntity<>("삭제 성공!", HttpStatus.OK);
+	}
+
+	@GetMapping("/api/postlike/{postId}")
+	public ResponseEntity addLike(@PathVariable Long postId, HttpServletRequest request) {
+		return this.postService.addLike(postId, request);
 	}
 }

@@ -26,9 +26,9 @@ public class UserService {
 	private static final String ADMIN_TOKEN = "AAABnvxRVklrnYxKZ0aHgTBcXukeZygoC";
 
 	@Transactional
-	public String signup(SignupRequestDto signupRequestDto) {
+	public void signup(SignupRequestDto signupRequestDto) {
 		String username = signupRequestDto.getUsername();
-	/*	String password = signupRequestDto.getPassword();*/
+		/*	String password = signupRequestDto.getPassword();*/
 
 		// 회원 중복 확인
 		Optional<User> found = userRepository.findByUsername(username);
@@ -48,11 +48,10 @@ public class UserService {
 
 		User user = new User(signupRequestDto);
 		userRepository.save(user);
-		return "success";
 	}
 
 	@Transactional(readOnly = true)
-	public String login(LoginRequestDto loginRequestDto, HttpServletResponse response) {
+	public void login(LoginRequestDto loginRequestDto, HttpServletResponse response) {
 		String username = loginRequestDto.getUsername();
 		String password = loginRequestDto.getPassword();
 
@@ -61,12 +60,10 @@ public class UserService {
 			() -> new IllegalArgumentException("등록된 사용자가 없습니다.")
 		);
 		// 비밀번호 확인
-		if (!user.getPassword().equals(password)) {
+		if (user.validatePassword(password)) {
 			throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
 		}
 
 		response.addHeader(JwtUtil.AUTHORIZATION_HEADER, jwtUtil.createToken(user.getUsername(), user.getUserRoleEnum()));
-
-		return "로그인에 성공하였습니다.!";
 	}
 }

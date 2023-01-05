@@ -5,6 +5,7 @@ import javax.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -23,7 +24,7 @@ public class CommentController {
 
 	private final CommentService commentService;
 
-	@PostMapping("/post/comments/{id}")
+	@PostMapping("/boards/{id}/comments")
 	public ResponseEntity<CommentResponseDto> createComment(@PathVariable Long id, @RequestBody CommentRequestDto requestDto, HttpServletRequest request){
 		CommentResponseDto commentResponseDto = commentService.createComment(id, requestDto, request);
 		return ResponseEntity.status(HttpStatus.OK).body(commentResponseDto);
@@ -35,6 +36,12 @@ public class CommentController {
 	}
 	@DeleteMapping("/comments/{commentId}")
 	public ResponseEntity deleteComment(HttpServletRequest request, @PathVariable Long commentId){
-		return commentService.deleteComment(request,commentId);
+		commentService.deleteComment(request,commentId);
+		return new ResponseEntity<>("삭제 성공!", HttpStatus.OK);
+	}
+
+	@GetMapping("commentlike/{commentId}")
+	public ResponseEntity addLike(@PathVariable Long commentId, HttpServletRequest request) {
+		return this.commentService.addLike(commentId, request);
 	}
 }

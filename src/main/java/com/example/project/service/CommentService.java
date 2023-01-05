@@ -41,19 +41,20 @@ public class CommentService {
 			()-> new IllegalArgumentException("게시글을 찾을 수 없습니다.")
 		); //해당 게시글 찾는 과정
 
-		if (token != null) {
-			if (jwtUtil.validateToken(token)) {
-				claims = jwtUtil.getUserInfoFromToken(token);
-			} else {
-				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
-			}
-			User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
-				() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
-			Comment comment = new Comment(requestDto, user, post);
-			commentRepository.save(comment);
-			return new CommentResponseDto(comment);
+		if (token == null) {
+			throw new IllegalArgumentException("권한 없음");
 		}
-		return null; // 토큰을 찾지 못했을 때 !
+
+		if (jwtUtil.validateToken(token)) {
+			claims = jwtUtil.getUserInfoFromToken(token);
+		} else {
+			throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
+		}
+		User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
+			() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
+		Comment comment = new Comment(requestDto, user, post);
+		commentRepository.save(comment);
+		return new CommentResponseDto(comment);
 	}
 
 	@Transactional
@@ -89,7 +90,7 @@ public class CommentService {
 	}
 
 	@Transactional
-	public ResponseEntity deleteComment( HttpServletRequest request, Long commentId){
+	public void deleteComment( HttpServletRequest request, Long commentId){
 		//        Board board = boardRepository.findById(id).orElseThrow(
 		//                ()-> new IllegalArgumentException("게시글을 찾을 수 없습니다.")
 		//        );
@@ -116,6 +117,38 @@ public class CommentService {
 				throw new IllegalArgumentException("댓글을 삭제할 권한이 없습니다.");
 			}
 		}
-		return new ResponseEntity<>("삭제 성공!", HttpStatus.OK);
+	}
+
+	@Transactional
+	public ResponseEntity addLike(Long commentId, HttpServletRequest request) {
+		User user = new User();
+		Comment comment = commentRepository.findById(commentId).orElseThrow(
+			() -> new RuntimeException("해당 게시글이 없습니다.")
+		);
+
+		String token = jwtUtil.resolveToken(request);
+		Claims claims;
+
+		if (token != null) {
+			if (jwtUtil.validateToken(token)) {
+				claims = jwtUtil.getUserInfoFromToken(token);
+			} else {
+				throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
+			}
+			user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
+				() -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
+			);
+		}
+		if (!comment.getLikes().contains(user)) {
+			comment.getLikes().add(user);
+			comment.getLikes().size();
+			this.commentRepository.save(comment);
+			return new ResponseEntity<>("좋아요 성공!", HttpStatus.OK);
+		} else {
+			comment.getLikes().remove(user);
+			comment.getLikes().size();
+			this.commentRepository.save(comment);
+			return new ResponseEntity<>("좋아요 취소!", HttpStatus.OK);
+		}
 	}
 }

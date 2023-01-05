@@ -1,11 +1,15 @@
 package com.example.project.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 
 import com.example.project.dto.CommentRequestDto;
@@ -27,7 +31,6 @@ public class Comment extends Timestamped {
 	@Column(nullable = false)
 	private String content;
 
-
 	@ManyToOne
 	@JoinColumn(name = "USER_ID", nullable = false)
 	private User user;
@@ -35,6 +38,9 @@ public class Comment extends Timestamped {
 	@ManyToOne
 	@JoinColumn(name = "Post_ID",nullable = false)
 	private Post post;
+
+	@ManyToMany
+	private List<User> likes = new ArrayList<>();
 
 
 

@@ -1,5 +1,9 @@
 package com.example.project.entity;
 
+import java.util.List;
+import java.util.Objects;
+
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
@@ -7,6 +11,7 @@ import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.OneToMany;
 
 import com.example.project.dto.SignupRequestDto;
 
@@ -16,7 +21,7 @@ import lombok.NoArgsConstructor;
 @Entity (name = "users")
 @Getter
 @NoArgsConstructor
-public class User {
+public class User extends Timestamped{
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,6 +33,9 @@ public class User {
 	@Column(nullable = false)
 	private String password;
 
+	@OneToMany(mappedBy = "user")
+	private List<Post> posts;
+
 	@Column(nullable = false)
 	@Enumerated(value = EnumType.STRING)
 	private UserRoleEnum userRoleEnum;
@@ -38,6 +46,9 @@ public class User {
 		this.userRoleEnum = requestDto.getUserRoleEnum();
 	}
 
+	public boolean validatePassword(String password) {
+		return Objects.equals(this.password, password);
+	}
 
 
 }
